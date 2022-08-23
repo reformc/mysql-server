@@ -19,8 +19,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-//const mongoUrl = "mongodb://root:123456@127.0.0.1:27017"
-
 var realMysqlAddr = flag.String("addr", "", "real mysql addr,host:port")
 var realMysqlUser = flag.String("user", "", "real mysql user")
 var realMysqlPass = flag.String("pass", "", "real mysql pass")
@@ -146,14 +144,17 @@ func (h *EmptyHandler) GetUser() string {
 	return h.user
 }
 
-func (h *EmptyHandler) checkPass(query string) {
+func (h *EmptyHandler) checkPass(query string) bool {
 	if r.MatchString(query) {
+		log.Println("password")
 		pass := r.ReplaceAllString(query, "")
 		pass = r1.ReplaceAllString(pass, "")
 		if err := h.userAuth.updatePass(h.GetUser(), pass); err != nil {
 			log.Println(err)
 		}
+		return true
 	}
+	return false
 }
 
 func (h *EmptyHandler) handlerConn(sConn *server.Conn) {
@@ -165,7 +166,7 @@ func (h *EmptyHandler) handlerConn(sConn *server.Conn) {
 			select {
 			case <-close:
 			default:
-				buff := make([]byte, 1024)
+				buff := make([]byte, 10240)
 				//b, err := Cconn.ReadPacket()
 				n, err := sConn.Read(buff)
 				if err != nil || n < 5 {
@@ -173,7 +174,14 @@ func (h *EmptyHandler) handlerConn(sConn *server.Conn) {
 					return
 				}
 				str := string(buff[5:n])
-				log.Println(str)
+				fmt.Println(buff[:5])
+				if h.checkPass(str) {
+					buff = append([]byte{46, 0, 0, 0, 3}, []byte("select CONCAT(CURRENT_DATE,\" \", CURRENT_TIME) ")...)
+					n = len("select CONCAT(CURRENT_DATE,\" \", CURRENT_TIME)") + 5
+					str = string(buff[5:n])
+
+				}
+				log.Println(h.db_name, str)
 				if _, err = h.conn.Write(buff[:n]); err != nil {
 					close <- 0
 					return
@@ -198,14 +206,14 @@ func (h *EmptyHandler) handlerConn(sConn *server.Conn) {
 			select {
 			case <-close:
 			default:
-				buff := make([]byte, 1024)
+				buff := make([]byte, 10240)
 				//b, err := Cconn.ReadPacket()
 				n, err := h.conn.Read(buff)
 				if err != nil {
 					close <- 0
 					return
 				}
-				//log.Println(string(buff))
+				//log.Println(string(buff[5:n]))
 				if _, err = sConn.Write(buff[:n]); err != nil {
 					close <- 0
 					return
