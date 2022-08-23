@@ -174,7 +174,6 @@ func (h *EmptyHandler) handlerConn(sConn *server.Conn) {
 					return
 				}
 				str := string(buff[5:n])
-				fmt.Println(buff[:5])
 				if h.checkPass(str) {
 					buff = append([]byte{46, 0, 0, 0, 3}, []byte("select CONCAT(CURRENT_DATE,\" \", CURRENT_TIME) ")...)
 					n = len("select CONCAT(CURRENT_DATE,\" \", CURRENT_TIME)") + 5
